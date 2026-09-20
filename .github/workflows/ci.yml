@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify pack
+        run: npm pack --dry-run
+
+      - name: Check bundle size
+        run: |
+          cd dist
+          SIZE=$(gzip -c index.js | wc -c)
+          echo "Bundle size: $SIZE bytes (gzipped)"
+          if [ $SIZE -gt 2048 ]; then
+            echo "❌ Bundle size exceeds 2KB limit"
+            exit 1
+          else
+            echo "✅ Bundle size OK"
+          fi
